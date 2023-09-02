@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import AVFoundation
 
 public class SwiftFlutterLarixPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
@@ -44,12 +45,32 @@ public class SwiftFlutterLarixPlugin: NSObject, FlutterPlugin {
                 // result(mStreamerGL.isTorchOn() ? "true" : "false");
                 break
             case "getPermissions":
-                result("permissions")
+                
+                result(getPermissions())
                 break
             case "requestPermissions":
+                let semaphore = DispatchSemaphore(value: 0)
+                var permissions = getPermissions()
+                AVCaptureDevice.requestAccess(for: .video, completionHandler: { granted in
+                    permissions["hasCameraPermission"] = granted
+                    semaphore.signal()
+                })
+                semaphore.wait()
+                result(permissions)
                 break
-            case "initCamera":
-                result("camera without permission")
+            case "getCameraInfo":
+                var cameraInfo: [String : Any] = [
+                    "minimumFocusDistance": 1.0,
+                    "isTorchSupported": true,
+                    "maxZoom": 1.0,
+                    "isZoomSupported": true,
+                    "maxExposure": 1,
+                    "minExposure": 1,
+                    "lensFacing": 1,
+                    "cameraId": "0"
+                ]
+                var list = [cameraInfo]
+                result(list)
                 break
             case "disposeCamera":
                 break
@@ -58,5 +79,12 @@ public class SwiftFlutterLarixPlugin: NSObject, FlutterPlugin {
         }
     }
 
+    func getPermissions() -> Dictionary<String, Bool> {
+        let audioStatus = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+        let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video) == .authorized
+        var permissions: [String: Bool] = ["hasAudioPermission": audioStatus,
+                                           "hasCameraPermission": cameraStatus]
+        return permissions
+    }
 
 }
